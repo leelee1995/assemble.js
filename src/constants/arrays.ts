@@ -1,0 +1,1 @@
+export const OPERATORS = ["EQ", "NEQ", "GT", "LT", "GTE", "LTE", "IN", "NIN"];

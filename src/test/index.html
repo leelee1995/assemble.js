@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Document</title>
+    </head>
+<body>
+    <div class="assemble" data-uri="path/to/resource1">
+        <template>
+            <p data-evaluate="{{student.gpa}} GT 3.8 ? PASS">This is the first assemble template.</p>
+        </template>
+    </div>
+    <div class="assemble" data-uri="path/to/resource2">
+        <template>
+            <p data-evaluate="{{user.age}} LT 18 ? DENIED:PASS">This is the second assemble template.</p>
+        </template>
+    </div>
+</body>
+</html>
