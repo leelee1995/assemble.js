@@ -1,6 +1,6 @@
-import { OPERATORS } from "./constants/arrays.js";
+import { logError } from "./services/logger.js";
 import { fetch } from "./services/request.js";
-import { conditionExists, extractTemplate, followsConditionSyntax, uriExists } from "./utils.js";
+import { extractTemplate, handleAttributeValue, handleExpression, handleTrueAndFalseValues, uriExists } from "./utils.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -13,9 +13,9 @@ dotenv.config();
  * @returns Parsed template string
  */
 const parse = (template: string, data: {}): string => {
-    const regex = /{{\s*([\w.]+)\s*}}/g;
-    const result = template.replace(regex, (_, key) => {
-        const value = key.split('.').reduce((obj: any, k: any) => (obj && obj[k] !== undefined) ? obj[k] : '', data);
+    const regex: RegExp = /{{\s*([\w.]+)\s*}}/g;
+    const result: string = template.replace(regex, (_, key) => {
+        const value: string = key.split('.').reduce((obj: any, k: any) => (obj && obj[k] !== undefined) ? obj[k] : '', data);
         return String(value);
     });
 
@@ -29,20 +29,32 @@ const parse = (template: string, data: {}): string => {
  * @returns void
  */
 const evaluateStatement = (element: Element | undefined): void => {
-    if (!element || !conditionExists(element)) return;
+    if (!element) return;
 
-    const statement = element.getAttribute("data-evaluate");
+    const statement: string = handleAttributeValue(element, "data-evaluate");
+    const expression = handleExpression(statement);
 
-    if (!followsConditionSyntax(statement as string)) return;
+    if (statement.includes("?")) {
+        const [trueValue, falseValue] = handleTrueAndFalseValues(statement);
 
-    const parts = (statement as string).split(" ");
-    const value1 = parts[0];
-    const operator = parts[1];
-    const value2 = parts[2];
-    const ternaryOperator = parts[3];
-    const trueFalseValues = parts[4]?.includes(":") ? parts[4].split(":") : parts[4];
-
-    OPERATORS
+        try {
+            if (eval(expression)) {
+                if (trueValue !== undefined) element.textContent = trueValue;
+            } else {
+                if (falseValue !== undefined) element.textContent = falseValue;
+            }
+        } catch (error) {
+            logError(new Error(`Error evaluating expression: ${expression} - ${error}`), "index");
+            throw new Error(`Error evaluating expression: ${expression} - ${error}`);
+        }
+    } else {
+        try {
+            element.textContent = eval(expression);
+        } catch (error) {
+            logError(new Error(`Error evaluating expression: ${expression} - ${error}`), "index");
+            throw new Error(`Error evaluating expression: ${expression} - ${error}`);
+        }
+    }
 }
 
 /**
@@ -60,7 +72,6 @@ export const render = (elements: Element | HTMLCollectionOf<Element> | undefined
         if (!uriExists(element)) continue;
 
         const elementCopy = element.cloneNode(true) as Element;
-
         const template = extractTemplate(elementCopy);
         const data = fetch(elementCopy.getAttribute("data-uri") as string, {"method": "GET", "headers": headers});
 
@@ -69,5 +80,7 @@ export const render = (elements: Element | HTMLCollectionOf<Element> | undefined
         for (const child of Array.from(elementCopy.querySelectorAll("[data-evaluate]"))) {
             evaluateStatement(child);
         }
+
+        element.replaceWith(elementCopy);     
     }
 }

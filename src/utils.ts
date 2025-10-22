@@ -1,6 +1,10 @@
-import { OPERATORS } from "./constants/arrays.js";
 import { logError } from "./services/logger.js";
 
+/**
+ * Extract template string from HTML element
+ * @param e 
+ * @returns 
+ */
 export const extractTemplate = (e: Element): string | undefined => {
     if (!e) {
         logError(new Error("Element is undefined"), "utils");
@@ -15,6 +19,11 @@ export const extractTemplate = (e: Element): string | undefined => {
     return e.innerHTML;
 }
 
+/**
+ * Check if element has data-uri attribute
+ * @param e 
+ * @returns 
+ */
 export const uriExists = (e:Element): boolean | undefined => {
     if (!e || !e.className.includes("assemble")) {
         logError(new Error(`Element is undefined or does not have class 'assemble': ${e}`), "utils");
@@ -29,53 +38,84 @@ export const uriExists = (e:Element): boolean | undefined => {
     return true;
 }
 
-export const conditionExists = (e:Element): boolean | undefined => {
-    if (!e || e.getAttribute("data-evaluate") === null) {
-        logError(new Error(`Element is undefined or does not have data-evaluate attribute: ${e}`), "utils");
-        return false;
+/**
+ * Handles attribute value retrieval
+ * 
+ * @param element 
+ * @param attribute 
+ * @returns 
+ */
+export const handleAttributeValue = (element: Element, attribute: string): string => {
+    if (!element.hasAttribute(attribute)) {
+        logError(new Error(`Element does not have attribute: ${attribute}`), "utils");
+        throw new Error(`Element does not have attribute: ${attribute}`);
     }
 
-    return true;
+    if (typeof element.getAttribute(attribute) !== "string") {
+        logError(new Error(`Attribute ${attribute} is not a string`), "utils");
+        throw new Error(`Attribute ${attribute} is not a string`);
+    }
+
+    if (!element.getAttribute(attribute)) {
+        logError(new Error(`Attribute ${attribute} has no value`), "utils");
+        throw new Error(`Attribute ${attribute} has no value`);
+    }
+
+    return element.getAttribute(attribute) as string;
 }
 
-export const followsConditionSyntax = (statement: string): boolean => {
-    // <div data-evaluate="[value1] [OPERATOR] [value2] [?] [true value]:[false value] (or [determined value])>...</div>"
-
-    if (!statement) {
-        logError(new Error("Statement is empty"), "utils");
-        return false;
+/**
+ * Handles expression extraction
+ * 
+ * @param value 
+ * @returns 
+ */
+export const handleExpression = (value: string): string => {
+    if (!value) {
+        logError(new Error("Value is empty"), "utils");
+        throw new Error("Value is empty");
     }
 
-    const parts = statement.split(" ");
+    const expression = value.includes("?") ? value.split("?")[0] : value;
 
-    if (parts.length < 5) {
-        logError(new Error(`Statement is missing one or more parts: ${statement}`), "utils");
-        return false;
-    }
-    const operator = parts[1];
-    const ternaryOperator = parts[3];
-    const determinedValue = parts[4];
-
-    // Verify the determined value exists and has valid format
-    if (!determinedValue || (determinedValue.includes(":") && determinedValue.split(":").length !== 2)) {
-        logError(new Error(`Determined value is invalid. Must be either a single value or 'trueValue:falseValue': ${determinedValue}`), "utils");
-        return false;
+    if (!expression || expression.trim() === "") {
+        logError(new Error("Expression is empty"), "utils");
+        throw new Error("Expression is empty");
     }
 
-    if (OPERATORS.every(op => operator !== op)) {
-        logError(new Error(`Operator is not valid: ${operator}`), "utils");
-        return false;
+    return expression.trim();
+}
+
+/**
+ * Handles true and false value extraction
+ * 
+ * @param value 
+ * @returns 
+ */
+export const handleTrueAndFalseValues = (value: string): [string, string] => {
+    if (!value.includes("?")) {
+        logError(new Error("Value does not contain true/false values"), "utils");
+        throw new Error("Value does not contain true/false values");
     }
 
-    if (ternaryOperator !== "?") {
-        logError(new Error(`3rd part must be a ternary operator: ${ternaryOperator}`), "utils");
-        return false;
+    const parts = value.split("?");
+
+    if (!parts[1] || parts[1].trim() === "") {
+        logError(new Error("True/false values part is empty"), "utils");
+        throw new Error("True/false values part is empty");
     }
 
-    if (!determinedValue || !determinedValue.length || !determinedValue.includes(":")) {
-        logError(new Error(`Determined value is not correctly formatted or it is empty: ${determinedValue}`), "utils");
-        return false;
+    if (parts.length !== 2 || !parts[1].includes(":")) {
+        logError(new Error("True/false values are not properly formatted"), "utils");
+        throw new Error("True/false values are not properly formatted");
     }
 
-    return true;
+    const [trueValue, falseValue] = parts[1].split(":").map(v => v.trim());
+
+    if (!trueValue || !falseValue) {
+        logError(new Error("True or false value is missing"), "utils");
+        throw new Error("True or false value is missing");
+    }
+
+    return [trueValue, falseValue];
 }

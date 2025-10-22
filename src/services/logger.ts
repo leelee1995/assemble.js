@@ -1,4 +1,4 @@
-import { appendFile } from 'fs/promises';
+import { appendFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 
 const LOG_DIR = 'logs';
@@ -14,11 +14,14 @@ const formatError = (error: Error | unknown): string => {
 export const logError = async (error: Error | unknown, source: string = 'app'): Promise<void> => {
     try {
         const logMessage = formatError(error);
-        const logFile = join(process.cwd(), LOG_DIR, `${source}-error.log`);
-        
+        const dirPath = join(process.cwd(), LOG_DIR);
+        const logFile = join(dirPath, `${source}-error.log`);
+
+        // Ensure logs directory exists
+        await mkdir(dirPath, { recursive: true });
+
         await appendFile(logFile, logMessage, { flag: 'a' });
     } catch (writeError) {
-        // Fallback to console if file writing fails
         console.error('Failed to write to log file:', writeError);
         console.error('Original error:', error);
     }
